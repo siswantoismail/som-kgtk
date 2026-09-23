@@ -2,7 +2,7 @@ import mysql from "mysql2/promise";
 
 // Cloud MySQL Connection configuration for Vercel Serverless Functions & Local Node
 const TIDB_DEFAULT_URL =
-  'mysql://BDmitH2gbZrQghR.root:xQNmcG5Rr9pCY74E@gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/sys?ssl={"rejectUnauthorized":false}';
+  'mysql://BDmitH2gbZrQghR.root:xQNmcG5Rr9pCY74E@gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/sim_sop_gtk?ssl={"rejectUnauthorized":false}';
 const MYSQL_URL =
   process.env.MYSQL_URL || process.env.DATABASE_URL || TIDB_DEFAULT_URL;
 
@@ -30,7 +30,7 @@ const MYSQL_CONFIG = {
     process.env.MYSQLDATABASE ||
     process.env.MYSQL_DATABASE ||
     process.env.DB_NAME ||
-    "sys",
+    "sim_sop_gtk",
   connectTimeout: 10000,
 };
 
@@ -57,16 +57,18 @@ export function getDbPool(): mysql.Pool {
         const port = Number(parsedUrl.port) || 4000;
         const user = decodeURIComponent(parsedUrl.username);
         const password = decodeURIComponent(parsedUrl.password);
-        const database = parsedUrl.pathname
+        const dbFromPath = parsedUrl.pathname
           ? parsedUrl.pathname.replace(/^\//, "")
-          : "sys";
+          : "";
+        const database =
+          dbFromPath && dbFromPath !== "sys" ? dbFromPath : "sim_sop_gtk";
 
         globalPool = mysql.createPool({
           host,
           port,
           user,
           password,
-          database: database || "sys",
+          database,
           waitForConnections: true,
           connectionLimit: 5,
           queueLimit: 0,
@@ -240,6 +242,16 @@ export async function ensureTablesCreated(): Promise<void> {
   const pool = getDbPool();
 
   try {
+    try {
+      await pool.query("CREATE DATABASE IF NOT EXISTS `sim_sop_gtk`;");
+      await pool.query("USE `sim_sop_gtk`;");
+    } catch (dbErr) {
+      console.warn(
+        "[MySQL Cloud] database create/use skipped or using current schema:",
+        dbErr,
+      );
+    }
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS \`users\` (
         \`id\` INT AUTO_INCREMENT PRIMARY KEY,
