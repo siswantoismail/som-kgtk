@@ -41,11 +41,14 @@ let globalPool: mysql.Pool | null = null;
 let tablesInitialized = false;
 
 export function getDbPool(): mysql.Pool {
+  const currentUrl = process.env.MYSQL_URL || process.env.DATABASE_URL || "";
+
   if (!globalPool) {
-    if (MYSQL_URL) {
+    if (currentUrl) {
       try {
-        // Parse URL to handle TiDB cloud url parameters cleanly
-        const parsedUrl = new URL(MYSQL_URL);
+        // Strip any raw json query parameter like ?ssl={"rejectUnauthorized":false}
+        const cleanUri = currentUrl.split("?")[0];
+        const parsedUrl = new URL(cleanUri);
         const host = parsedUrl.hostname;
         const port = Number(parsedUrl.port) || 4000;
         const user = decodeURIComponent(parsedUrl.username);
@@ -70,7 +73,7 @@ export function getDbPool(): mysql.Pool {
         });
       } catch {
         globalPool = mysql.createPool({
-          uri: MYSQL_URL,
+          uri: currentUrl,
           waitForConnections: true,
           connectionLimit: 5,
           queueLimit: 0,
