@@ -1,34 +1,37 @@
 import mysql from "mysql2/promise";
 
 // Cloud MySQL Connection configuration for Vercel Serverless Functions & Local Node
-const MYSQL_URL = process.env.MYSQL_URL || process.env.DATABASE_URL || "";
+const TIDB_DEFAULT_URL =
+  'mysql://BDmitH2gbZrQghR.root:xQNmcG5Rr9pCY74E@gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/sys?ssl={"rejectUnauthorized":false}';
+const MYSQL_URL =
+  process.env.MYSQL_URL || process.env.DATABASE_URL || TIDB_DEFAULT_URL;
 
 const MYSQL_CONFIG = {
   host:
     process.env.MYSQLHOST ||
     process.env.MYSQL_HOST ||
     process.env.DB_HOST ||
-    "localhost",
+    "gateway01.ap-northeast-1.prod.aws.tidbcloud.com",
   port:
     Number(
       process.env.MYSQLPORT || process.env.MYSQL_PORT || process.env.DB_PORT,
-    ) || 3306,
+    ) || 4000,
   user:
     process.env.MYSQLUSER ||
     process.env.MYSQL_USER ||
     process.env.DB_USER ||
-    "root",
+    "BDmitH2gbZrQghR.root",
   password:
     process.env.MYSQLPASSWORD ||
     process.env.MYSQL_PASSWORD ||
     process.env.DB_PASSWORD ||
-    "",
+    "xQNmcG5Rr9pCY74E",
   database:
     process.env.MYSQLDATABASE ||
     process.env.MYSQL_DATABASE ||
     process.env.DB_NAME ||
-    "sim_sop_gtk",
-  connectTimeout: 8000,
+    "sys",
+  connectTimeout: 10000,
 };
 
 const isRemoteDb = Boolean(
@@ -41,7 +44,8 @@ let globalPool: mysql.Pool | null = null;
 let tablesInitialized = false;
 
 export function getDbPool(): mysql.Pool {
-  const currentUrl = process.env.MYSQL_URL || process.env.DATABASE_URL || "";
+  const currentUrl =
+    process.env.MYSQL_URL || process.env.DATABASE_URL || TIDB_DEFAULT_URL;
 
   if (!globalPool) {
     if (currentUrl) {
