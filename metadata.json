@@ -1,0 +1,6 @@
+{
+  "name": "SIM-SOP GTK Gorontalo",
+  "description": "Sistem Informasi Manajemen SOP AP Pemetaan Kompetensi GTK Kemendikdasmen Provinsi Gorontalo dengan Naskah Resmi POS AP, Bagan Alir Operasional Standar KemenPAN-RB No. 35/2012, dan Ekspor Laporan PDF Resmi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

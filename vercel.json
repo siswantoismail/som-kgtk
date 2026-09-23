@@ -1,0 +1,49 @@
+{
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/auth/check-whitelist/:email*",
+      "destination": "/api/auth-whitelist?email=:email*"
+    },
+    {
+      "source": "/api/auth/register-password",
+      "destination": "/api/auth-register"
+    },
+    {
+      "source": "/api/auth/login",
+      "destination": "/api/auth-login"
+    },
+    {
+      "source": "/api/auth/users",
+      "destination": "/api/auth-users"
+    },
+    {
+      "source": "/api/sop/:id*",
+      "destination": "/api/sop"
+    },
+    {
+      "source": "/api/sop",
+      "destination": "/api/sop"
+    },
+    {
+      "source": "/api/changes/record",
+      "destination": "/api/changes"
+    },
+    {
+      "source": "/api/changes",
+      "destination": "/api/changes"
+    },
+    {
+      "source": "/api/auth/logout",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
