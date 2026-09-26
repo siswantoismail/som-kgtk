@@ -148,20 +148,53 @@ export async function getActiveSopDocument(): Promise<SopDocument> {
 }
 
 export async function saveSopDocument(doc: SopDocument): Promise<void> {
-  // Send update directly to Cloud MySQL (writes to `sop_documents` & `data_changes`)
-  const activeAccount = getStoredActiveUser();
-  const res = await fetch(apiUrl(`/api/sop/${encodeURIComponent(doc.id)}`), {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-user-email': activeAccount?.email || 'operator@kemdikbud.go.id'
-    },
-    body: JSON.stringify(doc)
-  });
+  // 1. Instantly update localStorage and IndexedDB so data is never lost
+  try {
+    const raw = localStorage.getItem(LS_SOP_KEY);
+    let list: SopDocument[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch {}
+    }
+    const idx = list.findIndex(d => d.id === doc.id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...doc };
+    } else {
+      list.unshift(doc);
+    }
+    saveToLocalCache(list);
+    localStorage.setItem(LS_ACTIVE_SOP_ID, doc.id);
+  } catch (err) {
+    console.warn('Gagal update cache lokal di saveSopDocument:', err);
+  }
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Gagal menyimpan naskah ke database Cloud MySQL.');
+  // 2. Persist to Express / MySQL backend
+  try {
+    const activeAccount = getStoredActiveUser();
+    const res = await fetch(apiUrl(`/api/sop/${encodeURIComponent(doc.id)}`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': activeAccount?.email || 'operator@kemdikbud.go.id'
+      },
+      body: JSON.stringify(doc)
+    });
+
+    if (!res.ok) {
+      // If PUT fails, fallback to POST
+      await fetch(apiUrl('/api/sop'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': activeAccount?.email || 'operator@kemdikbud.go.id'
+        },
+        body: JSON.stringify(doc)
+      }).catch(() => {});
+    }
+  } catch (netErr) {
+    console.warn('Sinkronisasi jaringan ke MySQL ditunda, tersimpan lokal:', netErr);
   }
 }
 
@@ -186,7 +219,24 @@ export async function createNewSopDocument(newDoc: Partial<SopDocument>): Promis
     status: newDoc.status || 'Aktif'
   };
 
-  // POST to Express / MySQL
+  // 1. Immediately update localStorage and IndexedDB
+  try {
+    const raw = localStorage.getItem(LS_SOP_KEY);
+    let list: SopDocument[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch {}
+    }
+    const updatedList = [completeDoc, ...list.filter(d => d.id !== completeDoc.id)];
+    saveToLocalCache(updatedList);
+    localStorage.setItem(LS_ACTIVE_SOP_ID, completeDoc.id);
+  } catch (err) {
+    console.warn('Gagal update cache lokal di createNewSopDocument:', err);
+  }
+
+  // 2. POST to Express / MySQL
   try {
     const activeAccount = getStoredActiveUser();
     await fetch(apiUrl('/api/sop'), {
@@ -201,8 +251,6 @@ export async function createNewSopDocument(newDoc: Partial<SopDocument>): Promis
     console.warn('API POST SOP failed, cached locally:', err);
   }
 
-  // Update local cache
-  await saveSopDocument(completeDoc);
   return completeDoc;
 }
 

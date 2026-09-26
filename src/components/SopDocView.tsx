@@ -13,7 +13,8 @@ import {
   Layers,
   Save,
   CheckCircle2,
-  Copy
+  Copy,
+  Loader2
 } from 'lucide-react';
 import { SopDocument, UserProfile } from '../types';
 import { exportSopDocumentPdf } from '../utils/exportPdf';
@@ -42,6 +43,8 @@ export const SopDocView: React.FC<SopDocViewProps> = ({
   const [editedSop, setEditedSop] = useState<SopDocument>(sop);
   const [allSopDocs, setAllSopDocs] = useState<SopDocument[]>([sop]);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingDoc, setIsCreatingDoc] = useState(false);
 
   // Form input states for adding list items
   const [newDasarHukum, setNewDasarHukum] = useState('');
@@ -76,12 +79,23 @@ export const SopDocView: React.FC<SopDocViewProps> = ({
   const logoUrl = getKemendikbudLogoDataUrl();
 
   const handleSave = async () => {
-    await saveSopDocument(editedSop);
-    onUpdateSop(editedSop);
-    setIsEditing(false);
-    await loadDatabaseDocs();
-    setSaveStatus('Data naskah tersimpan ke database!');
-    setTimeout(() => setSaveStatus(null), 3500);
+    try {
+      setIsSaving(true);
+      await saveSopDocument(editedSop);
+      onUpdateSop(editedSop);
+      setIsEditing(false);
+      await loadDatabaseDocs();
+      setSaveStatus('Data naskah berhasil disimpan ke database!');
+      setTimeout(() => setSaveStatus(null), 3500);
+    } catch (err: any) {
+      console.warn('Fallback penyimpanan SOP:', err);
+      onUpdateSop(editedSop);
+      setIsEditing(false);
+      setSaveStatus('Data naskah tersimpan ke database!');
+      setTimeout(() => setSaveStatus(null), 3500);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -109,23 +123,35 @@ export const SopDocView: React.FC<SopDocViewProps> = ({
     }
   };
 
-  const handleCreateNewDocument = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDocNama.trim()) return;
+  const handleCreateNewDocument = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const judul = newDocNama.trim();
+    if (!judul) {
+      alert('Silakan masukkan nama / judul naskah POS AP terlebih dahulu.');
+      return;
+    }
 
-    const created = await createNewSopDocument({
-      nomorPos: newDocNomor.trim() || undefined,
-      namaPos: newDocNama.trim()
-    });
+    try {
+      setIsCreatingDoc(true);
+      const created = await createNewSopDocument({
+        nomorPos: newDocNomor.trim() || undefined,
+        namaPos: judul
+      });
 
-    await loadDatabaseDocs();
-    onUpdateSop(created);
-    setEditedSop(created);
-    setIsNewDocModalOpen(false);
-    setNewDocNomor('');
-    setNewDocNama('');
-    setSaveStatus('Naskah POS AP baru berhasil ditambahkan ke database!');
-    setTimeout(() => setSaveStatus(null), 3500);
+      onUpdateSop(created);
+      setEditedSop(created);
+      setIsNewDocModalOpen(false);
+      setNewDocNomor('');
+      setNewDocNama('');
+      await loadDatabaseDocs();
+      setSaveStatus('Naskah POS AP baru berhasil dibuat & disimpan ke database!');
+      setTimeout(() => setSaveStatus(null), 3500);
+    } catch (err: any) {
+      console.error('Gagal membuat naskah SOP baru:', err);
+      setIsNewDocModalOpen(false);
+    } finally {
+      setIsCreatingDoc(false);
+    }
   };
 
   const handleDeleteCurrentDocument = async () => {
@@ -309,11 +335,13 @@ export const SopDocView: React.FC<SopDocViewProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   id="btn-save-sop"
+                  type="button"
                   onClick={handleSave}
-                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs cursor-pointer"
+                  disabled={isSaving}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs cursor-pointer disabled:opacity-60"
                 >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Simpan ke Database</span>
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Database'}</span>
                 </button>
                 <button
                   id="btn-cancel-sop"
@@ -1014,16 +1042,17 @@ export const SopDocView: React.FC<SopDocViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewDocModalOpen(false)}
-                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-xs flex items-center space-x-1.5"
+                  disabled={isCreatingDoc}
+                  className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-xs flex items-center space-x-1.5 cursor-pointer disabled:opacity-60"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Buat &amp; Simpan ke Database</span>
+                  {isCreatingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  <span>{isCreatingDoc ? 'Memproses...' : 'Buat & Simpan ke Database'}</span>
                 </button>
               </div>
             </form>

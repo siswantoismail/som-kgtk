@@ -1287,6 +1287,24 @@ app.post('/api/sop', async (req, res) => {
           \`dasar_hukum\`, \`kualifikasi_pelaksana\`, \`keterkaitan\`,
           \`peralatan\`, \`peringatan\`, \`pencatatan\`
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          \`nomor_pos\` = VALUES(\`nomor_pos\`),
+          \`instansi\` = VALUES(\`instansi\`),
+          \`unit_kerja\` = VALUES(\`unit_kerja\`),
+          \`tanggal_pembuatan\` = VALUES(\`tanggal_pembuatan\`),
+          \`tanggal_revisi\` = VALUES(\`tanggal_revisi\`),
+          \`tanggal_efektif\` = VALUES(\`tanggal_efektif\`),
+          \`nama_pos\` = VALUES(\`nama_pos\`),
+          \`disahkan_nama\` = VALUES(\`disahkan_nama\`),
+          \`disahkan_nip\` = VALUES(\`disahkan_nip\`),
+          \`disahkan_jabatan\` = VALUES(\`disahkan_jabatan\`),
+          \`dasar_hukum\` = VALUES(\`dasar_hukum\`),
+          \`kualifikasi_pelaksana\` = VALUES(\`kualifikasi_pelaksana\`),
+          \`keterkaitan\` = VALUES(\`keterkaitan\`),
+          \`peralatan\` = VALUES(\`peralatan\`),
+          \`peringatan\` = VALUES(\`peringatan\`),
+          \`pencatatan\` = VALUES(\`pencatatan\`),
+          \`updated_at\` = NOW()
       `, [
         sop.id,
         sop.nomorPos || '0000/T/B7.33/OT.02.00/2026',
@@ -1312,10 +1330,16 @@ app.post('/api/sop', async (req, res) => {
   }
 
   const existingIdx = memorySopDocs.findIndex(d => d.id === sop.id);
+  const completeDoc = {
+    ...DEFAULT_SOP,
+    ...(existingIdx >= 0 ? memorySopDocs[existingIdx] : {}),
+    ...sop
+  };
+
   if (existingIdx >= 0) {
-    memorySopDocs[existingIdx] = sop;
+    memorySopDocs[existingIdx] = completeDoc;
   } else {
-    memorySopDocs.push(sop);
+    memorySopDocs.unshift(completeDoc);
   }
 
   await recordDataChange(
@@ -1327,7 +1351,7 @@ app.post('/api/sop', async (req, res) => {
     sop
   );
 
-  res.json({ success: true, document: sop });
+  res.json({ success: true, document: completeDoc });
 });
 
 app.put('/api/sop/:id', async (req, res) => {
@@ -1338,43 +1362,49 @@ app.put('/api/sop/:id', async (req, res) => {
   if (isMySqlConnected && dbPool) {
     try {
       await dbPool.query(`
-        UPDATE \`sop_documents\` SET
-          \`nomor_pos\` = ?,
-          \`instansi\` = ?,
-          \`unit_kerja\` = ?,
-          \`tanggal_pembuatan\` = ?,
-          \`tanggal_revisi\` = ?,
-          \`tanggal_efektif\` = ?,
-          \`nama_pos\` = ?,
-          \`disahkan_nama\` = ?,
-          \`disahkan_nip\` = ?,
-          \`disahkan_jabatan\` = ?,
-          \`dasar_hukum\` = ?,
-          \`kualifikasi_pelaksana\` = ?,
-          \`keterkaitan\` = ?,
-          \`peralatan\` = ?,
-          \`peringatan\` = ?,
-          \`pencatatan\` = ?,
+        INSERT INTO \`sop_documents\` (
+          \`id\`, \`nomor_pos\`, \`instansi\`, \`unit_kerja\`,
+          \`tanggal_pembuatan\`, \`tanggal_revisi\`, \`tanggal_efektif\`,
+          \`nama_pos\`, \`disahkan_nama\`, \`disahkan_nip\`, \`disahkan_jabatan\`,
+          \`dasar_hukum\`, \`kualifikasi_pelaksana\`, \`keterkaitan\`,
+          \`peralatan\`, \`peringatan\`, \`pencatatan\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          \`nomor_pos\` = VALUES(\`nomor_pos\`),
+          \`instansi\` = VALUES(\`instansi\`),
+          \`unit_kerja\` = VALUES(\`unit_kerja\`),
+          \`tanggal_pembuatan\` = VALUES(\`tanggal_pembuatan\`),
+          \`tanggal_revisi\` = VALUES(\`tanggal_revisi\`),
+          \`tanggal_efektif\` = VALUES(\`tanggal_efektif\`),
+          \`nama_pos\` = VALUES(\`nama_pos\`),
+          \`disahkan_nama\` = VALUES(\`disahkan_nama\`),
+          \`disahkan_nip\` = VALUES(\`disahkan_nip\`),
+          \`disahkan_jabatan\` = VALUES(\`disahkan_jabatan\`),
+          \`dasar_hukum\` = VALUES(\`dasar_hukum\`),
+          \`kualifikasi_pelaksana\` = VALUES(\`kualifikasi_pelaksana\`),
+          \`keterkaitan\` = VALUES(\`keterkaitan\`),
+          \`peralatan\` = VALUES(\`peralatan\`),
+          \`peringatan\` = VALUES(\`peringatan\`),
+          \`pencatatan\` = VALUES(\`pencatatan\`),
           \`updated_at\` = NOW()
-        WHERE \`id\` = ?
       `, [
-        sop.nomorPos,
-        sop.instansi,
-        sop.unitKerja,
-        sop.tanggalPembuatan,
-        sop.tanggalRevisi,
-        sop.tanggalEfektif,
-        sop.namaPos,
-        sop.disahkanOleh?.nama,
-        sop.disahkanOleh?.nip,
-        sop.disahkanOleh?.jabatan,
+        docId,
+        sop.nomorPos || '0000/T/B7.33/OT.02.00/2026',
+        sop.instansi || '',
+        sop.unitKerja || '',
+        sop.tanggalPembuatan || '',
+        sop.tanggalRevisi || '',
+        sop.tanggalEfektif || '',
+        sop.namaPos || '',
+        sop.disahkanOleh?.nama || '',
+        sop.disahkanOleh?.nip || '',
+        sop.disahkanOleh?.jabatan || '',
         JSON.stringify(sop.dasarHukum || []),
         JSON.stringify(sop.kualifikasiPelaksana || []),
         JSON.stringify(sop.keterkaitan || []),
         JSON.stringify(sop.peralatan || []),
         JSON.stringify(sop.peringatan || []),
-        JSON.stringify(sop.pencatatan || []),
-        docId
+        JSON.stringify(sop.pencatatan || [])
       ]);
     } catch (err) {
       console.warn('MySQL update SOP failed:', err);
@@ -1382,10 +1412,14 @@ app.put('/api/sop/:id', async (req, res) => {
   }
 
   const idx = memorySopDocs.findIndex(d => d.id === docId);
+  const updatedDoc = idx >= 0
+    ? { ...memorySopDocs[idx], ...sop, id: docId }
+    : { ...DEFAULT_SOP, ...sop, id: docId };
+
   if (idx >= 0) {
-    memorySopDocs[idx] = sop;
+    memorySopDocs[idx] = updatedDoc;
   } else {
-    memorySopDocs.push(sop);
+    memorySopDocs.unshift(updatedDoc);
   }
 
   await recordDataChange(
@@ -1393,11 +1427,11 @@ app.put('/api/sop/:id', async (req, res) => {
     docId,
     'UPDATE',
     userEmail,
-    `Memperbarui naskah POS AP "${sop.namaPos}" (${sop.nomorPos})`,
-    { nomorPos: sop.nomorPos, namaPos: sop.namaPos, updatedAt: new Date().toISOString() }
+    `Memperbarui naskah POS AP "${updatedDoc.namaPos}" (${updatedDoc.nomorPos})`,
+    { nomorPos: updatedDoc.nomorPos, namaPos: updatedDoc.namaPos, updatedAt: new Date().toISOString() }
   );
 
-  res.json({ success: true, document: sop });
+  res.json({ success: true, document: updatedDoc });
 });
 
 app.delete('/api/sop/:id', async (req, res) => {

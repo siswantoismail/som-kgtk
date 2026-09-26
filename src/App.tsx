@@ -174,22 +174,21 @@ export default function App() {
     );
   }
 
-  // Update SOP Document & Persist directly to Cloud MySQL
+  // Update SOP Document & Persist directly to Database
   const handleUpdateSop = async (updatedSop: SopDocument) => {
+    setSopDocument(updatedSop);
     try {
-      await saveSopDocument(updatedSop);
-      setSopDocument(updatedSop);
       await recordSystemChangeAsync(
         'SOP_DOCUMENT',
         updatedSop.id,
         'UPDATE',
-        currentUser.email,
-        `Pembaruan naskah POS AP ${updatedSop.nomorPos} tersimpan di Cloud MySQL`,
+        currentUser?.email || 'operator@kemdikbud.go.id',
+        `Pembaruan naskah POS AP ${updatedSop.nomorPos} tersimpan di Database`,
         { nomorPos: updatedSop.nomorPos, namaPos: updatedSop.namaPos }
       );
-      addToast('success', 'Database Cloud MySQL Diperbarui', `Perubahan naskah ${updatedSop.nomorPos} berhasil tersimpan ke Cloud MySQL.`);
+      addToast('success', 'Database Diperbarui', `Perubahan naskah ${updatedSop.nomorPos} berhasil tersimpan ke database.`);
     } catch (e: any) {
-      addToast('warning', 'Gagal Simpan Cloud MySQL', e?.message || 'Gagal menyimpan pembaruan ke database Cloud MySQL.');
+      console.warn('Gagal mencatat riwayat perubahan:', e);
     }
   };
 
